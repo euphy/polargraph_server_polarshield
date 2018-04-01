@@ -7,7 +7,7 @@
 
 Configuration.
 
-This is one of the core files for the polargraph server program.  
+This is one of the core files for the polargraph server program.
 It sets up the motor objects (AccelSteppers), and has default
 values for the motor, sprocket and microstepping combinations used
 by polargraphs so far.
@@ -23,7 +23,7 @@ by polargraphs so far.
   #define MOTOR_A_ENABLE_PIN 3
   #define MOTOR_A_STEP_PIN 4
   #define MOTOR_A_DIR_PIN 5
-  
+
   #define MOTOR_B_ENABLE_PIN 6
   #define MOTOR_B_STEP_PIN 7
   #define MOTOR_B_DIR_PIN 8
@@ -31,7 +31,7 @@ by polargraphs so far.
   #define MOTOR_C_ENABLE_PIN 30
   #define MOTOR_C_STEP_PIN 31
   #define MOTOR_C_DIR_PIN 32
-  
+
 #elif MOTHERBOARD == RAMPS14
 
   // Uses E1 driver on RAMPS
@@ -55,14 +55,14 @@ by polargraphs so far.
   #define MOTOR_B_ENABLE_PIN 18
   #define MOTOR_B_STEP_PIN 17
   #define MOTOR_B_DIR_PIN 16
-  
+
 #endif
 
 
 
-AccelStepper motorA(1,MOTOR_A_STEP_PIN, MOTOR_A_DIR_PIN); 
-AccelStepper motorB(1,MOTOR_B_STEP_PIN, MOTOR_B_DIR_PIN); 
-//AccelStepper motorC(1,MOTOR_C_STEP_PIN, MOTOR_C_DIR_PIN); 
+AccelStepper motorA(1,MOTOR_A_STEP_PIN, MOTOR_A_DIR_PIN);
+AccelStepper motorB(1,MOTOR_B_STEP_PIN, MOTOR_B_DIR_PIN);
+//AccelStepper motorC(1,MOTOR_C_STEP_PIN, MOTOR_C_DIR_PIN);
 
 void configuration_motorSetup()
 {
@@ -82,7 +82,7 @@ void configuration_motorSetup()
   Serial.print(F(", Di:"));
   Serial.println(MOTOR_B_DIR_PIN);
 #endif
-  
+
   pinMode(MOTOR_A_ENABLE_PIN, OUTPUT);
   digitalWrite(MOTOR_A_ENABLE_PIN, HIGH);
   pinMode(MOTOR_B_ENABLE_PIN, OUTPUT);
@@ -97,26 +97,23 @@ void configuration_setup()
 {
   mmPerStep = mmPerRev / multiplier(motorStepsPerRev);
   stepsPerMM = multiplier(motorStepsPerRev) / mmPerRev;
-  
+
   // init SD card
-  sd_initSD();
+  // sd_initSD();
   lcd_initLCD();
   lcd_showSummary();
   delay(1000);
   pinMode(2, INPUT);
-  touch.InitTouch();
-  touch.setPrecision(PREC_MEDIUM);  
-  
+
   // calibration pins
   pinMode(ENDSTOP_X_MIN, INPUT_PULLUP);
   pinMode(ENDSTOP_Y_MIN, INPUT_PULLUP);
   pinMode(ENDSTOP_X_MAX, INPUT_PULLUP);
   pinMode(ENDSTOP_Y_MAX, INPUT_PULLUP);
-  
+
   lcd_displayFirstMenu();
   releaseMotors();
 }
 
 // end of Polarshield definition
 // =================================================================
-

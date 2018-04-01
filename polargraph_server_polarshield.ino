@@ -316,7 +316,7 @@ void setup()
   delay(500);
   penlift_penUp();
 
-  sd_autorunSD();
+  // sd_autorunSD();
 }
 
 void loop()
@@ -377,7 +377,13 @@ long motorBRestPoint = 0;
 #define TFT_YELLOW  0xFFE0
 #define TFT_WHITE   0xFFFF
 
-Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
+#define LCD_CS 40 // Chip Select goes to Analog 3
+#define LCD_CD 38 // Command/Data goes to Analog 2 AKA RS
+#define LCD_WR 39 // LCD Write goes to Analog 1
+#define LCD_RD A0 // LCD Read goes to Analog 0
+#define LCD_RESET 41 // Can alternately just connect to Arduino's reset pin
+
+Adafruit_TFTLCD lcd(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
 
 #define CS_PIN 12
 XPT2046_Touchscreen ts(CS_PIN);  // Param 2 - NULL - No interrupts
