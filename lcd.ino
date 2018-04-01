@@ -519,7 +519,7 @@ This intialises the LCD itself, and builds the map of the button corner coordina
 void lcd_initLCD()
 {
   lcd.begin(0x9325);
-  lcd.setRotation(1);
+  lcd.setRotation(3);
   lcd.fillScreen(TFT_COLOUR_BACKGROUND);
   ts.begin();
 
