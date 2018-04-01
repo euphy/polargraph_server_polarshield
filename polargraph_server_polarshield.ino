@@ -18,10 +18,10 @@ The program has a core part that consists of the following files:
 and the first portion of this main file, probably called
 something like polargraph_server_polarshield.ino.
 
-This version which is for the polarshield has a 
+This version which is for the polarshield has a
 bunch of other files too, providing extra functions.
 
-The file called impl_ps perhaps deserves a special mention, and 
+The file called impl_ps perhaps deserves a special mention, and
 that file contains alternative implementations of a few functions,
 where the changes to make it work on ATMEGA1280+ mean that code
 is _different_ to the basic implemenation.
@@ -51,9 +51,15 @@ Put them in libraries/UTouch/UTouchCD.h
 #include <EEPROM.h>
 #include "EEPROMAnything.h"
 
-/*  ===========================================================  
+#include <XPT2046_Touchscreen.h>
+#include <SPI.h>
+
+#include <Adafruit_GFX.h>    // Core graphics library
+#include <Adafruit_TFTLCD.h> // Hardware-specific library
+
+/*  ===========================================================
          CONFIGURATION!!
-    =========================================================== */    
+    =========================================================== */
 
 //Uncomment the following line to use a 2.4" panel, August 2014 and later
 #define LCD_TYPE TFT01_24_8
@@ -63,10 +69,10 @@ Put them in libraries/UTouch/UTouchCD.h
 //#define LCD_TYPE ITDB22
 
 
-/*  ===========================================================  
+/*  ===========================================================
          Define what kind of driver breakout you're using.
          (By commenting out the one's you _haven't_ got.)
-    =========================================================== */    
+    =========================================================== */
 #ifndef MOTHERBOARD
 #define MOTHERBOARD POLARSHIELD
 //#define MOTHERBOARD RAMPS14
@@ -78,25 +84,25 @@ Put them in libraries/UTouch/UTouchCD.h
 #define RAMPS14 2
 #define TFTSHIELD 3
 
-/*  ===========================================================  
+/*  ===========================================================
     Control whether to look for touch input or update LCD
     Comment this out if you DON'T have an LCD connected
-=========================================================== */    
+=========================================================== */
 #define USE_LCD
 
-/*  ===========================================================  
+/*  ===========================================================
     Some debugging flags
-=========================================================== */    
+=========================================================== */
 
 //#define DEBUG_SD
 //#define DEBUG_STATE
 #define DEBUG_COMMS
 
-/*  ===========================================================  
+/*  ===========================================================
     These variables are common to all polargraph server builds
-=========================================================== */    
+=========================================================== */
 
-const String FIRMWARE_VERSION_NO = "1.4.3";
+const String FIRMWARE_VERSION_NO = "1.5";
 #if MOTHERBOARD == RAMPS14
   const String MB_NAME = "RAMPS14";
 #elif MOTHERBOARD == POLARSHIELD
@@ -189,8 +195,8 @@ float penWidth = 0.8f; // line width in mm
 boolean reportingPosition = true;
 boolean acceleration = true;
 
-extern AccelStepper motorA; 
-extern AccelStepper motorB; 
+extern AccelStepper motorA;
+extern AccelStepper motorB;
 
 volatile boolean currentlyRunning = true;
 
@@ -280,7 +286,7 @@ const static String CMD_SETPENLIFTRANGE = "C45";
 const static String CMD_PIXELDIAGNOSTIC = "C46";
 const static String CMD_SET_DEBUGCOMMS = "C47";
 
-void setup() 
+void setup()
 {
   Serial.begin(57600);           // set up Serial library at 57600 bps
   Serial.println(F("POLARGRAPH ON!"));
@@ -297,10 +303,10 @@ void setup()
   configuration_setup();
 
   motorA.setMaxSpeed(currentMaxSpeed);
-  motorA.setAcceleration(currentAcceleration);  
+  motorA.setAcceleration(currentAcceleration);
   motorB.setMaxSpeed(currentMaxSpeed);
   motorB.setAcceleration(currentAcceleration);
-  
+
   motorA.setCurrentPosition(startLengthStepsA);
   motorB.setCurrentPosition(startLengthStepsB);
   for (int i = 0; i<INLENGTH; i++) {
@@ -315,9 +321,9 @@ void setup()
 
 void loop()
 {
-  if (comms_waitForNextCommand(lastCommand)) 
+  if (comms_waitForNextCommand(lastCommand))
   {
-#ifdef DEBUG_COMMS    
+#ifdef DEBUG_COMMS
     Serial.print(F("Last comm: "));
     Serial.print(lastCommand);
     Serial.println(F("..."));
@@ -327,13 +333,9 @@ void loop()
 }
 
 
-/*===========================================================  
+/*===========================================================
     These variables are for the polarshield / mega
-=========================================================== */    
-#include <UTFT.h>
-#include <UTouch.h>
-
-
+=========================================================== */
 
 const static String CMD_TESTPENWIDTHSCRIBBLE = "C12";
 const static String CMD_DRAWSAWPIXEL = "C15,";
@@ -365,17 +367,21 @@ long ENDSTOP_Y_MIN_POSITION = 130;
 long motorARestPoint = 0;
 long motorBRestPoint = 0;
 
-/* Stuff for display */
-extern uint8_t SmallFont[];
-extern uint8_t BigFont[];
-UTFT   lcd(LCD_TYPE, 38,39,40,41);
+// Assign human-readable names to some common 16-bit color values:
+#define	TFT_BLACK   0x0000
+#define	TFT_BLUE    0x001F
+#define	TFT_RED     0xF800
+#define	TFT_GREEN   0x07E0
+#define TFT_CYAN    0x07FF
+#define TFT_MAGENTA 0xF81F
+#define TFT_YELLOW  0xFFE0
+#define TFT_WHITE   0xFFFF
 
-#if MOTHERBOARD == TFTSHIELD
-UTouch touch(6, 5, 4, 3, 2); // pinouts for the TFT shield
-#else
-UTouch touch(11,12,18,19, 2);
-#endif
-const int INTERRUPT_TOUCH_PIN = 0;
+Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
+
+#define CS_PIN 12
+XPT2046_Touchscreen ts(CS_PIN);  // Param 2 - NULL - No interrupts
+
 boolean displayTouched = false;
 int touchX = 0;
 int touchY = 0;
@@ -440,18 +446,3 @@ boolean canCalibrate = false;
 boolean useAutoStartFromSD = true;
 String autoStartFilename = "AUTORUN.TXT";
 boolean autoStartFileFound = false;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
