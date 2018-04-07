@@ -98,11 +98,42 @@ void configuration_setup()
   mmPerStep = mmPerRev / multiplier(motorStepsPerRev);
   stepsPerMM = multiplier(motorStepsPerRev) / mmPerRev;
 
-  // init SD card
-  sd_initSD();
+  pinMode(SD_CS_PIN, OUTPUT);
+  digitalWrite(SD_CS_PIN, HIGH);
+
+  pinMode(TOUCH_CS_PIN, OUTPUT);
+  digitalWrite(TOUCH_CS_PIN, HIGH);
+
+  pinMode(LCD_CS_PIN, OUTPUT);
+  digitalWrite(LCD_CS_PIN, HIGH);
+  Serial.print("End: ");
+  Serial.println(millis());
+
+  delay(200);
+  Serial.print("LCD: ");
+  Serial.println(millis());
   lcd_initLCD();
-  lcd_showSummary();
-  delay(1000);
+  Serial.print("End: ");
+  Serial.println(millis());
+
+  delay(200);
+  Serial.print("Touch: ");
+  Serial.println(millis());
+  lcd_initTouch();
+  Serial.print("End: ");
+  Serial.println(millis());
+
+  delay(200);
+  Serial.print("SD: ");
+  Serial.println(millis());
+  sd_initSD();
+  Serial.print("End: ");
+  Serial.println(millis());
+
+
+  lcd_showSDStatus();
+  delay(1500);
+  
   pinMode(2, INPUT);
 
   // calibration pins

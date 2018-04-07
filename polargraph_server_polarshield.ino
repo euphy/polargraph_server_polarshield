@@ -288,8 +288,11 @@ const static String CMD_SET_DEBUGCOMMS = "C47";
 
 void setup()
 {
+
   Serial.begin(57600);           // set up Serial library at 57600 bps
   Serial.println(F("POLARGRAPH ON!"));
+  Serial.print("Start: ");
+  Serial.println(millis());
   Serial.print(F("v"));
   Serial.println(FIRMWARE_VERSION_NO);
   Serial.print(F("Hardware: "));
@@ -377,16 +380,17 @@ long motorBRestPoint = 0;
 #define TFT_YELLOW  0xFFE0
 #define TFT_WHITE   0xFFFF
 
-#define LCD_CS 40 // Chip Select goes to Analog 3
-#define LCD_CD 38 // Command/Data goes to Analog 2 AKA RS
-#define LCD_WR 39 // LCD Write goes to Analog 1
-#define LCD_RD A0 // LCD Read goes to Analog 0
-#define LCD_RESET 41 // Can alternately just connect to Arduino's reset pin
+#define LCD_CS_PIN 40 // Chip Select goes to Analog 3
+#define LCD_CD_PIN 38 // Command/Data goes to Analog 2 AKA RS
+#define LCD_WR_PIN 39 // LCD Write goes to Analog 1
+#define LCD_RD_PIN A0 // LCD Read isn't actually wired up
+#define LCD_RESET_PIN 41 // Can alternately just connect to Arduino's reset pin
 
-Adafruit_TFTLCD lcd(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
+Adafruit_TFTLCD lcd(LCD_CS_PIN, LCD_CD_PIN, LCD_WR_PIN, LCD_RD_PIN, LCD_RESET_PIN);
 
-#define CS_PIN 12
-XPT2046_Touchscreen ts(CS_PIN);  // Param 2 - NULL - No interrupts
+#define TOUCH_CS_PIN 12
+#define SCREEN_ROTATION 3
+XPT2046_Touchscreen ts(TOUCH_CS_PIN);  // Param 2 - NULL - No interrupts
 
 boolean displayTouched = false;
 int touchX = 0;
@@ -418,7 +422,7 @@ boolean drawFromStore = false;
 String commandFilename = "";
 
 // sd card stuff
-const int chipSelect = 53;
+#define SD_CS_PIN 53
 boolean sdCardInit = false;
 
 // set up variables using the SD utility library functions:

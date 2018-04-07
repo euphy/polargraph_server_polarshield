@@ -15,22 +15,87 @@ input through the screen.
 There is a lot of this, but it's pretty samey.
 */
 
+/*
+About calibration.
+------------------
+
+
+top-right: touch ok: 3843,3701
+bot-right: touch ok: 3850,289
+bot-left:  touch ok: 427,315
+top-left:  touch ok: 371,3782
+
+X is 371 (left or XMin) to 3850 (right or XMax) - a span of 3479
+Y is 3782 (top or YMin) to 289 (bottom or YMax) - a span of 3493
+
+X is 320 pixels wide
+Y is 240 pixels high
+
+So:
+3479 / 320 = 10.871875 touch points per pixel
+3493 / 200 = 17.465 touch points per pixel
+
+Hypothesis: top-right raw values (3843, 3701)
+should translate to 320, 0.
+
+Note that Y is inverted.
+
+XMin = 371
+XMax = 3843
+XValue = 2000
+NormalisedX = (XValue-XMin) = 1629
+XPixel = NormalisedX / 10.871.875 = 149.8
+
+YMin = 3782
+YMax = 289
+YValue = 3000 (near the top)
+NormalisedY = (YValue-YMax) = 2711
+InvertedY = (YRange - NormalisedY) = 782
+YPixel = InvertedY / 17.465 = 44.7
+
+YValue = 1000 (near the bottom)
+NormalisedY = (YValue-YMax) = 711
+InvertedY = (YRange - NormalisedY) = 2782
+YPixel = InvertedY / 17.465 = 159.29
+
+*/
 
 /**  This is called regularly.
 It sets a parameter (displayTouched) to true, but does not act
 directly on the touch.
 */
 
+#define TOUCH_X_LEFT 371
+#define TOUCH_X_RIGHT 3843
+#define TOUCH_Y_TOP 3782
+#define TOUCH_Y_BOT 289
+
+#define SCREEN_WIDTH 320
+#define SCREEN_HEIGHT 200
+
+const float xTouchPointsPerPixel = (TOUCH_X_RIGHT-TOUCH_X_LEFT) / SCREEN_WIDTH;
+const int yRange = (TOUCH_Y_TOP-TOUCH_Y_BOT);
+const float yTouchPointsPerPixel = yRange / SCREEN_HEIGHT;
+
+void lcd_transformToPixelPosition(TS_Point *p)
+{
+  p->x = (p->x - TOUCH_X_LEFT) / xTouchPointsPerPixel;
+  p->y = (yRange - (p->y-TOUCH_Y_BOT)) / yTouchPointsPerPixel;
+}
+
 void lcd_touchInput()
 {
+  if (millis() < (lastInteractionTime+50)) return; // quick escape
+
   // don't trigger if it's already in processing
   if (!displayTouched)
   {
     if (ts.touched()) {
       TS_Point touchPoint = ts.getPoint();
+      lcd_transformToPixelPosition(&touchPoint);
       long x = touchPoint.x;
       long y = touchPoint.y;
-      if ((x != -1) and (y != -1)) {
+      if ((x>0) and (x<=SCREEN_WIDTH) and (y>0) and (y<=SCREEN_HEIGHT)) {
         Serial.print("touch ok: ");
         Serial.print(touchX);
         Serial.print(",");
@@ -127,8 +192,6 @@ int buttonCoords[12][2];
 byte  gap = 10;
 byte  buttonSize = 60;
 byte  grooveSize = 36;
-static int screenWidth = 320;
-static int screenHeight = 240;
 static int centreYPosition = 112;
 
 const byte MENU_INITIAL = 1;
@@ -190,112 +253,125 @@ const byte BUTTON_ADJUST_PENLIFT = 44;
 const byte BUTTON_PENLIFT_SAVE_TO_EEPROM = 45;
 
 #define TFT_COLOUR_BRIGHT 0xFFFF
-#define TFT_COLOUR_LIGHT 0x07E0
+#define TFT_COLOUR_LIGHT 0xF800
 #define TFT_COLOUR_DARK 0x001F
 #define TFT_COLOUR_BACKGROUND 0x0000
 
 void lcd_processTouchCommand()
 {
   Serial.println("process touch.");
-  // get control that is under the
-        Serial.print("3: ");
-        Serial.print(touchX);
-        Serial.print(",");
-        Serial.println(touchY);
+  // get control that is under the finger
+  Serial.print("3: ");
+  Serial.print(touchX);
+  Serial.print(",");
+  Serial.println(touchY);
   byte buttonNumber = lcd_getButtonNumber(touchX, touchY);
+  byte pressedButton = lcd_getWhichButtonPressed(buttonNumber, currentMenu);
+  if (pressedButton == 0)
+  {
+    Serial.println("pressedButton == 0");
+    return;  // quick exit
+  }
+
   lcd_outlinePressedButton(buttonNumber);
 
-  byte pressedButton = lcd_getWhichButtonPressed(buttonNumber, currentMenu);
   Serial.print("button:");
   Serial.println(pressedButton);
+  int buttonDelay = 200;
+  int incrementButtonDelay = 50;
+  int thoughtfulButtonDelay = 1000;
+
+  byte redrawButton = pressedButton;
+  boolean redrawMenu = false;
+
   switch (pressedButton)
   {
     case BUTTON_POWER_ON:
       lcd_runStartScript();
-      lcd_drawButton(BUTTON_POWER_OFF);
+      redrawButton = BUTTON_POWER_OFF;
       break;
     case BUTTON_POWER_OFF:
       lcd_runEndScript();
-      lcd_drawButton(BUTTON_POWER_ON);
+      redrawButton = BUTTON_POWER_ON;
       break;
     case BUTTON_DRAW_FROM_SD:
       lcd_drawStoreContentsMenu();
       break;
-//    case BUTTON_RESET_SD:
-//      root.close();
-//      sd_initSD();
-//      lcd_drawStoreContentsMenu();
-//      break;
+   case BUTTON_RESET_SD:
+     sd_reInitSD();
+     lcd_drawStoreContentsMenu();
+     break;
     case BUTTON_MORE_RIGHT:
       break;
     case BUTTON_PAUSE_RUNNING:
       currentlyRunning = false;
-      lcd_drawButton(BUTTON_RESUME_RUNNING);
+      redrawButton = BUTTON_RESUME_RUNNING;
+      buttonDelay = thoughtfulButtonDelay;
       break;
     case BUTTON_RESUME_RUNNING:
       currentlyRunning = true;
-      lcd_drawButton(BUTTON_PAUSE_RUNNING);
+      redrawButton = BUTTON_PAUSE_RUNNING;
+      buttonDelay = thoughtfulButtonDelay;
       break;
     case BUTTON_RESET:
       break;
     case BUTTON_PEN_UP:
       inNoOfParams=0;
       penlift_penUp();
-      lcd_drawButton(BUTTON_PEN_DOWN);
+      redrawButton = BUTTON_PEN_DOWN;
       break;
     case BUTTON_PEN_DOWN:
       inNoOfParams=0;
       penlift_penDown();
-      lcd_drawButton(BUTTON_PEN_UP);
+      redrawButton = BUTTON_PEN_UP;
       break;
     case BUTTON_INC_SPEED:
       exec_setMotorSpeed(currentMaxSpeed + speedChangeIncrement);
       lcd_drawNumberWithBackground(buttonCoords[8][0], centreYPosition, currentMaxSpeed);
-      lcd_drawButton(pressedButton);
+      buttonDelay = incrementButtonDelay;
       break;
     case BUTTON_DEC_SPEED:
       exec_setMotorSpeed(currentMaxSpeed - speedChangeIncrement);
       lcd_drawNumberWithBackground(buttonCoords[8][0], centreYPosition, currentMaxSpeed);
-      lcd_drawButton(pressedButton);
+      buttonDelay = incrementButtonDelay;
       break;
     case BUTTON_INC_ACCEL:
       exec_setMotorAcceleration(currentAcceleration + accelChangeIncrement);
       lcd_drawNumberWithBackground(buttonCoords[10][0], centreYPosition, currentAcceleration);
-      lcd_drawButton(pressedButton);
+      buttonDelay = incrementButtonDelay;
       break;
     case BUTTON_DEC_ACCEL:
       exec_setMotorAcceleration(currentAcceleration - accelChangeIncrement);
       lcd_drawNumberWithBackground(buttonCoords[10][0], centreYPosition, currentAcceleration);
-      lcd_drawButton(pressedButton);
+      buttonDelay = incrementButtonDelay;
       break;
     case BUTTON_INC_PENSIZE:
       penWidth = penWidth+penWidthIncrement;
       lcd_drawFloatWithBackground(buttonCoords[10][0], centreYPosition, penWidth);
-      lcd_drawButton(pressedButton);
+      buttonDelay = incrementButtonDelay;
       break;
     case BUTTON_DEC_PENSIZE:
       penWidth = penWidth-penWidthIncrement;
       if (penWidth < penWidthIncrement)
         penWidth = penWidthIncrement;
       lcd_drawFloatWithBackground(buttonCoords[10][0], centreYPosition, penWidth);
-      lcd_drawButton(pressedButton);
+      buttonDelay = incrementButtonDelay;
       break;
     case BUTTON_INC_PENSIZE_INC:
       penWidthIncrement += 0.005;
       lcd_drawFloatWithBackground(buttonCoords[8][0], centreYPosition, penWidthIncrement);
-      lcd_drawButton(pressedButton);
+      buttonDelay = incrementButtonDelay;
       break;
     case BUTTON_DEC_PENSIZE_INC:
       penWidthIncrement -= 0.005;
       if (penWidthIncrement < 0.005)
         penWidthIncrement = 0.005;
       lcd_drawFloatWithBackground(buttonCoords[8][0], centreYPosition, penWidthIncrement);
-      lcd_drawButton(pressedButton);
+      buttonDelay = incrementButtonDelay;
       break;
     case BUTTON_TOGGLE_ECHO:
       echoingStoredCommands = !echoingStoredCommands;
-      delay(500);
-      lcd_drawButton(pressedButton);
+      buttonDelay = 500;
       break;
     case BUTTON_DRAW_THIS_FILE:
       if (commandFilename != "None" && commandFilename != "" && commandFilename != "            ")
@@ -303,110 +379,104 @@ void lcd_processTouchCommand()
         Serial.print("Drawing this file: ");
         Serial.println(commandFilename);
         currentlyDrawingFromFile = true;
-        lcd_drawButton(BUTTON_STOP_FILE);
+        redrawButton = BUTTON_STOP_FILE;
         displayTouched = false;
-        // impl_exec_execFromStore(commandFilename);
-        lcd_drawButton(pressedButton);
+        impl_exec_execFromStore(commandFilename);
+
       }
       else
       {
-        lcd_drawButton(pressedButton);
+
       }
       break;
     case BUTTON_STOP_FILE:
       Serial.print("Cancelling drawing this file: ");
       Serial.println(commandFilename);
       currentlyDrawingFromFile = false;
-      lcd_drawButton(BUTTON_DRAW_THIS_FILE);
+      redrawButton = BUTTON_DRAW_THIS_FILE;
       break;
     case BUTTON_NEXT_FILE:
       // load the next filename
       Serial.println("looking up next filename.");
       commandFilename = lcd_loadFilename(commandFilename, 1);
       lcd_drawCurrentSelectedFilename();
-      lcd_drawButton(pressedButton);
+
       break;
     case BUTTON_PREV_FILE:
       // load the next filename
       Serial.println("looking up previous filename.");
       commandFilename = lcd_loadFilename(commandFilename, -1);
       lcd_drawCurrentSelectedFilename();
-      lcd_drawButton(pressedButton);
+
       break;
     case BUTTON_CANCEL_FILE:
       // return to main menu
       commandFilename = "";
       currentMenu = MENU_INITIAL;
-      lcd.fillScreen(TFT_COLOUR_BACKGROUND);
-      lcd_drawButtons();
+      redrawMenu = true;
       break;
     case BUTTON_ADJUST_PENSIZE_MENU:
       currentMenu = MENU_ADJUST_PENSIZE;
-      lcd.fillScreen(TFT_COLOUR_BACKGROUND);
-      lcd_drawButtons();
+      redrawMenu = true;
       break;
     case BUTTON_ADJUST_SPEED_MENU:
       currentMenu = MENU_ADJUST_SPEED;
-      lcd.fillScreen(TFT_COLOUR_BACKGROUND);
-      lcd_drawButtons();
+      redrawMenu = true;
       break;
     case BUTTON_ADJUST_POSITION_MENU:
       currentMenu = MENU_ADJUST_POSITION;
-      lcd.fillScreen(TFT_COLOUR_BACKGROUND);
-      lcd_drawButtons();
+      redrawMenu = true;
       break;
     case BUTTON_SETTINGS_MENU:
       currentMenu = MENU_SETTINGS;
-      lcd.fillScreen(TFT_COLOUR_BACKGROUND);
-      lcd_drawButtons();
+      redrawMenu = true;
       break;
     case BUTTON_SETTINGS_MENU_2:
       currentMenu = MENU_SETTINGS_2;
-      lcd.fillScreen(TFT_COLOUR_BACKGROUND);
-      lcd_drawButtons();
+      redrawMenu = true;
       break;
     case BUTTON_DONE:
       currentMenu = MENU_INITIAL;
-      lcd.fillScreen(TFT_COLOUR_BACKGROUND);
-      lcd_drawButtons();
+      redrawMenu = true;
       break;
     case BUTTON_MOVE_INC_A:
       motorA.move(moveIncrement);
       while (motorA.distanceToGo() != 0)
         motorA.run();
       lcd_drawNumberWithBackground(buttonCoords[8][0], centreYPosition, motorA.currentPosition());
-      lcd_drawButton(pressedButton);
+
       break;
     case BUTTON_MOVE_DEC_A:
       motorA.move(0-moveIncrement);
       while (motorA.distanceToGo() != 0)
         motorA.run();
       lcd_drawNumberWithBackground(buttonCoords[8][0], centreYPosition, motorA.currentPosition());
-      lcd_drawButton(pressedButton);
+
       break;
     case BUTTON_MOVE_INC_B:
       motorB.move(moveIncrement);
       while (motorB.distanceToGo() != 0)
         motorB.run();
       lcd_drawNumberWithBackground(buttonCoords[10][0], centreYPosition, motorB.currentPosition());
-      lcd_drawButton(pressedButton);
+
       break;
     case BUTTON_MOVE_DEC_B:
       motorB.move(0-moveIncrement);
       while (motorB.distanceToGo() != 0)
         motorB.run();
       lcd_drawNumberWithBackground(buttonCoords[10][0], centreYPosition, motorB.currentPosition());
-      lcd_drawButton(pressedButton);
+
       break;
     case BUTTON_CALIBRATE:
       calibrate_doCalibration();
-      lcd_drawButton(pressedButton);
+
       break;
 
     case BUTTON_ADJUST_PENLIFT:
       currentMenu = MENU_ADJUST_PENLIFT;
       lcd.fillScreen(TFT_COLOUR_BACKGROUND);
-      lcd_drawButtons();
+      redrawMenu = true;
+      redrawButton = 0;
       break;
     case BUTTON_INC_PENLIFT_UP:
       if (upPosition < 300) {
@@ -418,7 +488,7 @@ void lcd_processTouchCommand()
         isPenUp = true;
       }
       lcd_drawNumberWithBackground(buttonCoords[10][0], centreYPosition, upPosition);
-      lcd_drawButton(pressedButton);
+
       break;
     case BUTTON_DEC_PENLIFT_UP:
       if (upPosition > 0) {
@@ -430,7 +500,7 @@ void lcd_processTouchCommand()
         isPenUp = true;
       }
       lcd_drawNumberWithBackground(buttonCoords[10][0], centreYPosition, upPosition);
-      lcd_drawButton(pressedButton);
+
       break;
     case BUTTON_INC_PENLIFT_DOWN:
       if (downPosition < 300) {
@@ -442,7 +512,7 @@ void lcd_processTouchCommand()
         isPenUp = false;
       }
       lcd_drawNumberWithBackground(buttonCoords[8][0], centreYPosition, downPosition);
-      lcd_drawButton(pressedButton);
+
       break;
     case BUTTON_DEC_PENLIFT_DOWN:
       if (downPosition > 0) {
@@ -454,16 +524,22 @@ void lcd_processTouchCommand()
         isPenUp = false;
       }
       lcd_drawNumberWithBackground(buttonCoords[8][0], centreYPosition, downPosition);
-      lcd_drawButton(pressedButton);
+
       break;
     case BUTTON_PENLIFT_SAVE_TO_EEPROM:
       Serial.println("HJey");
       EEPROM_writeAnything(EEPROM_PENLIFT_DOWN, downPosition);
       EEPROM_writeAnything(EEPROM_PENLIFT_UP, upPosition);
       eeprom_loadPenLiftRange();
-      delay(1000);
-      lcd_drawButton(pressedButton);
+      buttonDelay = 1000;
       break;
+  }
+
+  delay(buttonDelay);
+  if (redrawMenu) {
+    lcd_drawButtons();
+  } else {
+    lcd_drawButton(redrawButton);
   }
 }
 
@@ -519,14 +595,8 @@ This intialises the LCD itself, and builds the map of the button corner coordina
 void lcd_initLCD()
 {
   lcd.begin(0x9325);
-  lcd.setRotation(3);
+  lcd.setRotation(SCREEN_ROTATION);
   lcd.fillScreen(TFT_COLOUR_BACKGROUND);
-  ts.begin();
-
-  // output lcd size
-//  lcd.printNumI(lcd.getDisplayXSize(), 10, 40);
-//  lcd.printNumI(lcd.getDisplayYSize(), 10, 52);
-
 
   buttonSize = (320 - (gap*4)) / 3;
   grooveSize = 240 - (gap*2) - (buttonSize*2);
@@ -562,37 +632,45 @@ void lcd_initLCD()
   buttonCoords[11][0] = gap+buttonSize+gap+buttonSize+gap+buttonSize;
   buttonCoords[11][1] = gap+buttonSize+buttonSize+grooveSize;
 
-  lcd.fillRect(0, buttonCoords[5][1], screenWidth, 85, TFT_COLOUR_LIGHT);
+  int bandTop = buttonCoords[5][1];
+  int bandHeight = 75;
+
+  lcd.fillRect(0, bandTop, SCREEN_WIDTH, bandHeight, TFT_COLOUR_LIGHT);
 
   lcd.setTextColor(TFT_COLOUR_BRIGHT);
-  lcd.setTextSize(3);
-  lcd.setCursor(17, buttonCoords[5][1]+10);
+  lcd.setTextSize(2);
+  lcd.setCursor(27, bandTop+16);
   lcd.print("Polargraph.");
 
   lcd.setTextSize(1);
-  lcd.setCursor(20, buttonCoords[5][1]+32);
+  lcd.setCursor(30, bandTop+42);
   lcd.print("Drawing with robots.");
-  lcd.setCursor(20, buttonCoords[5][1]+buttonCoords[5][1]+gap);
+  lcd.setCursor(20, bandTop+bandTop+gap);
   lcd.print("v" + FIRMWARE_VERSION_NO);
-
 }
 
-void lcd_showSummary()
+void lcd_initTouch()
+{
+  ts.begin();
+}
+
+void lcd_showSDStatus()
 {
   int rowHeight = 17;
   int row = 0;
+  int textYPos = buttonCoords[5][1]+buttonCoords[5][1]-gap;
 
   lcd.setTextColor(TFT_COLOUR_BRIGHT);
   if (cardPresent) {
-    lcd.setCursor(20, buttonCoords[5][1]+buttonCoords[5][1]-gap);
+    lcd.setCursor(20, textYPos);
     lcd.print("SD card present");
     delay(500);
     if (cardInit) {
-      lcd.fillRect(0, buttonCoords[5][1]+buttonCoords[5][1]-gap,
-        screenWidth, 17, TFT_COLOUR_BACKGROUND);
+      lcd.fillRect(0, textYPos,
+        SCREEN_WIDTH, 17, TFT_COLOUR_BACKGROUND);
       delay(500);
       String msg;
-      lcd.setCursor(20, buttonCoords[5][1]+buttonCoords[5][1]-gap);
+      lcd.setCursor(20, textYPos);
       lcd.print("Card loaded - ");
       if (useAutoStartFromSD) {
         if (autoStartFileFound) {
@@ -605,7 +683,7 @@ void lcd_showSummary()
       else {
         msg = "Card loaded.";
       }
-      lcd.setCursor(20, buttonCoords[5][1]+buttonCoords[5][1]-gap);
+      lcd.setCursor(20, textYPos);
       lcd.print(msg);
     }
     else {
@@ -740,15 +818,18 @@ void lcd_outlinePressedButton(byte pressedButton)
   if (pressedButton >= 1 && pressedButton <=6)
   {
     byte coordsIndex = (pressedButton * 2)-2;
-    lcd.drawRect(buttonCoords[coordsIndex][0], buttonCoords[coordsIndex][1],
-      buttonSize, buttonSize, TFT_WHITE);
-    lcd.drawRect(buttonCoords[coordsIndex][0]+1, buttonCoords[coordsIndex][1]+1,
-      buttonSize, buttonSize, TFT_WHITE);
+    for (int i = 0; i<3; i++)
+    {
+      lcd.drawRect(buttonCoords[coordsIndex][0]+i, buttonCoords[coordsIndex][1]+i,
+        buttonSize-(2*i), buttonSize-(2*i), TFT_WHITE);
+    }
   }
   Serial.println("Outlined!");
 }
 void lcd_drawButton(byte but)
 {
+  if (but == 0) return;
+
   byte coordsIndex = 0;
   lcd.setTextColor(TFT_COLOUR_BRIGHT);
   switch (but)
@@ -1101,7 +1182,7 @@ void lcd_drawCurrentSelectedFilename()
   // erase the previous stuff
   lcd.setTextColor(TFT_COLOUR_BRIGHT);
   lcd.fillRect(buttonCoords[0][0],buttonCoords[1][1]+10,
-    screenWidth, 14, TFT_COLOUR_BACKGROUND);
+    SCREEN_WIDTH, 14, TFT_COLOUR_BACKGROUND);
 
   // see if there's one already found
   String msg = "No card found";
@@ -1225,7 +1306,7 @@ void lcd_echoLastCommandToDisplay(String com, String prefix)
 {
   if (currentMenu != MENU_INITIAL) return;
 
-  lcd.fillRect(buttonCoords[0][0],buttonCoords[1][1]+10, screenWidth, 14,
+  lcd.fillRect(buttonCoords[0][0],buttonCoords[1][1]+10, SCREEN_WIDTH, 14,
     TFT_COLOUR_BACKGROUND);
   lcd.setCursor(buttonCoords[0][0],buttonCoords[1][1]+10);
   lcd.setTextColor(TFT_COLOUR_BRIGHT);
