@@ -170,7 +170,7 @@ void lcd_checkForInput()
       lcd.fillScreen(TFT_BLACK);
     }
     else if (screenState == SCREEN_STATE_POWER_SAVE
-      && (millis() < lastInteractionTime + screenSaveIdleTime))
+      && (millis() < (lastInteractionTime + screenSaveIdleTime)))
     {
       delay(20);
       screenState = SCREEN_STATE_NORMAL;
@@ -295,12 +295,14 @@ void lcd_processTouchCommand()
       redrawButton = BUTTON_POWER_ON;
       break;
     case BUTTON_DRAW_FROM_SD:
-      lcd_drawStoreContentsMenu();
+      currentMenu = MENU_CHOOSE_FILE;
+      redrawMenu = true;
       break;
-   case BUTTON_RESET_SD:
-     sd_reInitSD();
-     lcd_drawStoreContentsMenu();
-     break;
+    case BUTTON_RESET_SD:
+      sd_reInitSD();
+      currentMenu = MENU_CHOOSE_FILE;
+      redrawMenu = true;
+      break;
     case BUTTON_MORE_RIGHT:
       break;
     case BUTTON_PAUSE_RUNNING:
@@ -347,26 +349,26 @@ void lcd_processTouchCommand()
       break;
     case BUTTON_INC_PENSIZE:
       penWidth = penWidth+penWidthIncrement;
-      lcd_drawFloatWithBackground(buttonCoords[10][0], centreYPosition, penWidth);
+      lcd_drawFloatWithBackground(buttonCoords[10][0], centreYPosition, penWidth, 3);
       buttonDelay = incrementButtonDelay;
       break;
     case BUTTON_DEC_PENSIZE:
       penWidth = penWidth-penWidthIncrement;
       if (penWidth < penWidthIncrement)
         penWidth = penWidthIncrement;
-      lcd_drawFloatWithBackground(buttonCoords[10][0], centreYPosition, penWidth);
+      lcd_drawFloatWithBackground(buttonCoords[10][0], centreYPosition, penWidth, 3);
       buttonDelay = incrementButtonDelay;
       break;
     case BUTTON_INC_PENSIZE_INC:
       penWidthIncrement += 0.005;
-      lcd_drawFloatWithBackground(buttonCoords[8][0], centreYPosition, penWidthIncrement);
+      lcd_drawFloatWithBackground(buttonCoords[8][0], centreYPosition, penWidthIncrement, 3);
       buttonDelay = incrementButtonDelay;
       break;
     case BUTTON_DEC_PENSIZE_INC:
       penWidthIncrement -= 0.005;
       if (penWidthIncrement < 0.005)
         penWidthIncrement = 0.005;
-      lcd_drawFloatWithBackground(buttonCoords[8][0], centreYPosition, penWidthIncrement);
+      lcd_drawFloatWithBackground(buttonCoords[8][0], centreYPosition, penWidthIncrement, 3);
       buttonDelay = incrementButtonDelay;
       break;
     case BUTTON_TOGGLE_ECHO:
@@ -543,14 +545,14 @@ void lcd_processTouchCommand()
   }
 }
 
-
 void lcd_drawNumberWithBackground(int x, int y, long value)
 {
   lcd.setCursor(x, y);
   lcd.setTextColor(TFT_COLOUR_BRIGHT, TFT_COLOUR_BACKGROUND);
   lcd.print(value);
 }
-void lcd_drawFloatWithBackground(int x, int y, float value)
+
+void lcd_drawFloatWithBackground(int x, int y, float value, int decimalPlaces)
 {
   lcd.setCursor(x, y);
   lcd.setTextColor(TFT_COLOUR_BRIGHT, TFT_COLOUR_BACKGROUND);
@@ -577,17 +579,10 @@ void lcd_setCurrentMenu(byte menu)
 
 void lcd_displayFirstMenu()
 {
-  lcd.fillScreen(TFT_COLOUR_BACKGROUND);
   lcd_setCurrentMenu(MENU_INITIAL);
   lcd_drawButtons();
 }
 
-void lcd_drawStoreContentsMenu()
-{
-  lcd.fillScreen(TFT_COLOUR_BACKGROUND);
-  lcd_setCurrentMenu(MENU_CHOOSE_FILE);
-  lcd_drawButtons();
-}
 
 /*
 This intialises the LCD itself, and builds the map of the button corner coordinates.
@@ -701,29 +696,22 @@ void lcd_showSDStatus()
 void lcd_drawButtons()
 {
   lcd.setTextColor(TFT_COLOUR_BRIGHT, TFT_COLOUR_LIGHT);
+  lcd.fillScreen(TFT_COLOUR_BACKGROUND);
 
   if (currentMenu == MENU_INITIAL)
   {
-    if (powerIsOn)
-      lcd_drawButton(BUTTON_POWER_OFF);
-    else
-      lcd_drawButton(BUTTON_POWER_ON);
+    if (powerIsOn) lcd_drawButton(BUTTON_POWER_OFF);
+    else lcd_drawButton(BUTTON_POWER_ON);
 
-    if (cardInit)
-      lcd_drawButton(BUTTON_DRAW_FROM_SD);
+    if (cardInit) lcd_drawButton(BUTTON_DRAW_FROM_SD);
 
-    if (canCalibrate)
-      lcd_drawButton(BUTTON_CALIBRATE);
+    if (canCalibrate) lcd_drawButton(BUTTON_CALIBRATE);
 
-    if (isPenUp)
-      lcd_drawButton(BUTTON_PEN_DOWN);
-    else
-      lcd_drawButton(BUTTON_PEN_UP);
+    if (isPenUp) lcd_drawButton(BUTTON_PEN_DOWN);
+    else lcd_drawButton(BUTTON_PEN_UP);
 
-    if (currentlyRunning)
-      lcd_drawButton(BUTTON_PAUSE_RUNNING);
-    else
-      lcd_drawButton(BUTTON_RESUME_RUNNING);
+    if (currentlyRunning) lcd_drawButton(BUTTON_PAUSE_RUNNING);
+    else lcd_drawButton(BUTTON_RESUME_RUNNING);
 
     lcd_drawButton(BUTTON_SETTINGS_MENU);
 
@@ -733,20 +721,16 @@ void lcd_drawButtons()
     lcd_drawButton(BUTTON_ADJUST_SPEED_MENU);
     lcd_drawButton(BUTTON_ADJUST_PENSIZE_MENU);
 
-    if (currentlyRunning)
-      lcd_drawButton(BUTTON_PAUSE_RUNNING);
-    else
-      lcd_drawButton(BUTTON_RESUME_RUNNING);
+    if (currentlyRunning) lcd_drawButton(BUTTON_PAUSE_RUNNING);
+    else lcd_drawButton(BUTTON_RESUME_RUNNING);
   }
   else if (currentMenu == MENU_CHOOSE_FILE)
   {
     lcd_drawButton(BUTTON_RESET_SD);
     lcd_drawButton(BUTTON_NEXT_FILE);
     lcd_drawButton(BUTTON_PREV_FILE);
-    if (currentlyDrawingFromFile)
-      lcd_drawButton(BUTTON_STOP_FILE);
-    else
-      lcd_drawButton(BUTTON_DRAW_THIS_FILE);
+    if (currentlyDrawingFromFile) lcd_drawButton(BUTTON_STOP_FILE);
+    else lcd_drawButton(BUTTON_DRAW_THIS_FILE);
     lcd_drawButton(BUTTON_CANCEL_FILE);
     lcd_drawCurrentSelectedFilename();
   }
@@ -767,8 +751,8 @@ void lcd_drawButtons()
     lcd_drawButton(BUTTON_INC_PENSIZE_INC);
     lcd_drawButton(BUTTON_DEC_PENSIZE_INC);
     lcd_drawButton(BUTTON_DONE);
-    lcd_drawFloatWithBackground(buttonCoords[8][0], centreYPosition, penWidthIncrement);
-    lcd_drawFloatWithBackground(buttonCoords[10][0], centreYPosition, penWidth);
+    lcd_drawFloatWithBackground(buttonCoords[8][0], centreYPosition, penWidthIncrement, 3);
+    lcd_drawFloatWithBackground(buttonCoords[10][0], centreYPosition, penWidth, 3);
   }
   else if (currentMenu == MENU_ADJUST_POSITION)
   {
@@ -812,6 +796,7 @@ void lcd_drawButtonBackground(byte coordsIndex)
   lcd.fillRect(buttonCoords[coordsIndex][0], buttonCoords[coordsIndex][1],
     buttonSize, buttonSize, TFT_COLOUR_LIGHT);
 }
+
 void lcd_outlinePressedButton(byte pressedButton)
 {
   Serial.println("Outlining.");
@@ -824,8 +809,8 @@ void lcd_outlinePressedButton(byte pressedButton)
         buttonSize-(2*i), buttonSize-(2*i), TFT_WHITE);
     }
   }
-  Serial.println("Outlined!");
 }
+
 void lcd_drawButton(byte but)
 {
   if (but == 0) return;
@@ -837,58 +822,60 @@ void lcd_drawButton(byte but)
     case BUTTON_SET_HOME: // pos 1
       coordsIndex=0;
       lcd_drawButtonBackground(coordsIndex);
-      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-10, buttonCoords[coordsIndex][1]+(buttonSize/2)-12);
+      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-((3*6)/2), buttonCoords[coordsIndex][1]+(buttonSize/2)-12);
       lcd.print("SET");
-      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-14, buttonCoords[coordsIndex][1]+(buttonSize/2));
+      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-((4*6)/2), buttonCoords[coordsIndex][1]+(buttonSize/2));
       lcd.print("HOME");
       break;
     case BUTTON_POWER_ON: // pos 1
       coordsIndex=0;
       lcd_drawButtonBackground(coordsIndex);
-      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-22, buttonCoords[coordsIndex][1]+(buttonSize/2)-12);
+      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-((6*6)/2), buttonCoords[coordsIndex][1]+(buttonSize/2)-12);
       lcd.print("MOTORS");
-      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-6, buttonCoords[coordsIndex][1]+(buttonSize/2));
+      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-((2*6)/2), buttonCoords[coordsIndex][1]+(buttonSize/2));
       lcd.print("ON");
       break;
     case BUTTON_POWER_OFF: // pos 1
       coordsIndex=0;
       lcd_drawButtonBackground(coordsIndex);
-      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-22, buttonCoords[coordsIndex][1]+(buttonSize/2)-12);
+      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-((6*6)/2), buttonCoords[coordsIndex][1]+(buttonSize/2)-12);
       lcd.print("MOTORS");
-      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-10, buttonCoords[coordsIndex][1]+(buttonSize/2));
+      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-((3*6)/2), buttonCoords[coordsIndex][1]+(buttonSize/2));
       lcd.print("OFF");
       break;
     case BUTTON_TOGGLE_ECHO: // pos 1
       coordsIndex=0;
       lcd_drawButtonBackground(coordsIndex);
-      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-22, buttonCoords[coordsIndex][1]+(buttonSize/2)-12);
+      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-((6*6)/2), buttonCoords[coordsIndex][1]+(buttonSize/2)-12);
       lcd.print("TOGGLE");
-      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-16, buttonCoords[coordsIndex][1]+(buttonSize/2));
+      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-((5*6)/2), buttonCoords[coordsIndex][1]+(buttonSize/2));
       lcd.print("COMMS");
       break;
 
     case BUTTON_ADJUST_PENLIFT: // pos 1
       coordsIndex=0;
       lcd_drawButtonBackground(coordsIndex);
-      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-22, buttonCoords[coordsIndex][1]+(buttonSize/2)-12);
+      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-((6*6)/2), buttonCoords[coordsIndex][1]+(buttonSize/2)-12);
       lcd.print("ADJUST");
-      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-24, buttonCoords[coordsIndex][1]+(buttonSize/2));
+      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-((7*6)/2), buttonCoords[coordsIndex][1]+(buttonSize/2));
       lcd.print("PENLIFT");
       break;
-//    case BUTTON_RESET_SD: // pos 1
-//      coordsIndex=0;
-//      lcd_drawButtonBackground(coordsIndex);
-//      lcd.print("RESET", buttonCoords[coordsIndex][0]+(buttonSize/2)-22, buttonCoords[coordsIndex][1]+(buttonSize/2)-12);
-//      lcd.print("CARD", buttonCoords[coordsIndex][0]+(buttonSize/2)-12, buttonCoords[coordsIndex][1]+(buttonSize/2));
-//      break;
+   case BUTTON_RESET_SD: // pos 1
+     coordsIndex=0;
+     lcd_drawButtonBackground(coordsIndex);
+     lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-((5*6)/2), buttonCoords[coordsIndex][1]+(buttonSize/2)-12);
+     lcd.print("RESET");
+     lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-((4*6)/2), buttonCoords[coordsIndex][1]+(buttonSize/2));
+     lcd.print("CARD");
+     break;
     case BUTTON_DRAW_FROM_SD: // pos 2
       coordsIndex=2;
       lcd_drawButtonBackground(coordsIndex);
-      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-14, buttonCoords[coordsIndex][1]+(buttonSize/2)-18);
+      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-((4*6)/2), buttonCoords[coordsIndex][1]+(buttonSize/2)-18);
       lcd.print("DRAW");
-      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-14, buttonCoords[coordsIndex][1]+(buttonSize/2)-6);
+      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-((4*6)/2), buttonCoords[coordsIndex][1]+(buttonSize/2)-6);
       lcd.print("FROM");
-      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-6, buttonCoords[coordsIndex][1]+(buttonSize/2)+6);
+      lcd.setCursor(buttonCoords[coordsIndex][0]+(buttonSize/2)-((2*6)/2), buttonCoords[coordsIndex][1]+(buttonSize/2)+6);
       lcd.print("SD");
       break;
     case BUTTON_MORE_RIGHT: // pos 3
@@ -1263,7 +1250,6 @@ String lcd_getNextFile(String selectedFilename) {
 }
 
 String lcd_getPreviousFile(String selectedFilename) {
-  boolean fileIncremented = false;
   String prevFilename = "";
 
   // see if it is the first one, and just return straight away if so
@@ -1315,7 +1301,7 @@ void lcd_echoLastCommandToDisplay(String com, String prefix)
 
 byte lcd_getWhichButtonPressed(byte buttonNumber, byte menu)
 {
-  if (currentMenu == MENU_INITIAL)
+  if (menu == MENU_INITIAL)
   {
     switch (buttonNumber)
     {
@@ -1339,7 +1325,7 @@ byte lcd_getWhichButtonPressed(byte buttonNumber, byte menu)
         break;
     }
   }
-  else if (currentMenu == MENU_ADJUST_SPEED)
+  else if (menu == MENU_ADJUST_SPEED)
   {
     switch (buttonNumber)
     {
@@ -1350,7 +1336,7 @@ byte lcd_getWhichButtonPressed(byte buttonNumber, byte menu)
       case 6: return BUTTON_INC_ACCEL; break;
     }
   }
-  else if (currentMenu == MENU_ADJUST_PENSIZE)
+  else if (menu == MENU_ADJUST_PENSIZE)
   {
     switch (buttonNumber)
     {
@@ -1361,7 +1347,7 @@ byte lcd_getWhichButtonPressed(byte buttonNumber, byte menu)
       case 6: return BUTTON_INC_PENSIZE; break;
     }
   }
-  else if (currentMenu == MENU_ADJUST_POSITION)
+  else if (menu == MENU_ADJUST_POSITION)
   {
     switch (buttonNumber)
     {
@@ -1372,7 +1358,7 @@ byte lcd_getWhichButtonPressed(byte buttonNumber, byte menu)
       case 6: return BUTTON_MOVE_INC_B; break;
     }
   }
-  else if (currentMenu == MENU_ADJUST_PENLIFT)
+  else if (menu == MENU_ADJUST_PENLIFT)
   {
     switch (buttonNumber)
     {
@@ -1384,7 +1370,7 @@ byte lcd_getWhichButtonPressed(byte buttonNumber, byte menu)
       case 6: return BUTTON_INC_PENLIFT_UP; break;
     }
   }
-  else if (currentMenu == MENU_CHOOSE_FILE)
+  else if (menu == MENU_CHOOSE_FILE)
   {
     switch (buttonNumber)
     {
@@ -1397,7 +1383,7 @@ byte lcd_getWhichButtonPressed(byte buttonNumber, byte menu)
         break;
     }
   }
-  else if (currentMenu == MENU_SETTINGS)
+  else if (menu == MENU_SETTINGS)
   {
     switch (buttonNumber)
     {
@@ -1409,7 +1395,7 @@ byte lcd_getWhichButtonPressed(byte buttonNumber, byte menu)
       case 6: return BUTTON_SETTINGS_MENU_2; break;
     }
   }
-  else if (currentMenu == MENU_SETTINGS_2)
+  else if (menu == MENU_SETTINGS_2)
   {
     switch (buttonNumber)
     {
@@ -1417,6 +1403,8 @@ byte lcd_getWhichButtonPressed(byte buttonNumber, byte menu)
       case 4: return BUTTON_DONE; break;
     }
   }
+
+  return 0;
 }
 
 byte lcd_getButtonNumber(int x, int y)
@@ -1444,4 +1432,6 @@ byte lcd_getButtonNumber(int x, int y)
   else if (x >= buttonCoords[10][0] && x <= buttonCoords[11][0]
      && y >= buttonCoords[10][1] && y <= buttonCoords[11][1])
     return 6;
+  else
+    return 0;
 }

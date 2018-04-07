@@ -160,7 +160,6 @@ static int rotateTransform = 0;
 
 static int machineWidth = 650;
 static int machineHeight = 800;
-static int sqtest = 0;
 
 static int defaultMachineWidth = 650;
 static int defaultMachineHeight = 650;
@@ -212,14 +211,13 @@ char lastCommand[INLENGTH+1];
 boolean commandConfirmed = false;
 
 int rebroadcastReadyInterval = 5000L;
-volatile long lastOperationTime = 0L;
+volatile unsigned long lastOperationTime = 0L;
 long motorIdleTimeBeforePowerDown = 600000L;
 boolean automaticPowerDown = true;
 
-volatile long lastInteractionTime = 0L;
+volatile unsigned long lastInteractionTime = 0L;
 
 static boolean lastWaveWasTop = true;
-static boolean lastMotorBiasWasA = true;
 
 //  Drawing direction
 const static byte DIR_NE = 1;
@@ -237,9 +235,6 @@ const static byte DIR_MODE_AUTO = 1;
 const static byte DIR_MODE_PRESET = 2;
 const static byte DIR_MODE_RANDOM = 3;
 static int globalDrawDirectionMode = DIR_MODE_AUTO;
-
-
-static int currentRow = 0;
 
 const String READY_STR = "READY_200";
 const String RESEND_STR = "RESEND";
@@ -412,7 +407,7 @@ boolean useRoveArea = false;
 int commandNo = 0;
 int errorInjection = 0;
 
-long screenSaveIdleTime = 1200000L;
+unsigned long screenSaveIdleTime = 1200000L;
 const static byte SCREEN_STATE_NORMAL = 0;
 const static byte SCREEN_STATE_POWER_SAVE = 1;
 byte screenState = SCREEN_STATE_NORMAL;

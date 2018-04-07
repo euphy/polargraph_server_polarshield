@@ -147,7 +147,7 @@ void impl_exec_execFromStore(String inFilename)
   {
     String noBlanks = "";
     // remove blanks
-    for (int i = 0; i<inFilename.length(); i++)
+    for (unsigned int i = 0; i<inFilename.length(); i++)
     {
       if (inFilename[i] != ' ')
         noBlanks = noBlanks + inFilename[i];
@@ -274,22 +274,17 @@ void impl_pixel_testPenWidthScribble()
   float endWidth = atof(inParam3);
   float incSize = atof(inParam4);
 
-  boolean ltr = true;
-
   float oldPenWidth = penWidth;
   int iterations = 0;
 
   int posA = motorA.currentPosition();
   int posB = motorB.currentPosition();
 
-  int startColumn = posA;
   int startRow = posB;
 
   for (float pw = startWidth; pw <= endWidth; pw+=incSize)
   {
     iterations++;
-    int column = posA;
-
     penWidth = pw;
     int maxDens = pixel_maxDensity(penWidth, rowWidth);
     Serial.print(F("Penwidth test "));
