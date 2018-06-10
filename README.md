@@ -1,10 +1,17 @@
 polargraph_server_polarshield
 =============================
 
-Polargraph Server for ATMEGA2560 based arduino boards, primarily targetting a Polarshield motor controller.
+Polargraph Server for ATMEGA2560 based arduino boards, primarily targetting a Polarshield v2.x motor controller.
+This was the standard board for PolargraphSD machines made from 2014 to 2018.
 
-A Polarshield is an add-on board for an Arduino MEGA that provides two stepper drivers, an SD card reader and 
-an LCD touchscreen. The firmware may also be configured at compile time to target RAMPS, though without SD reader and touchscreen (yet...).
+** 
+Please note! From mid-2018, development has moved onto a ESP32-based platform. 
+The codebase has changed to do this, and so v2 of this code is in a separate repo: 
+https://github.com/euphy/polargraph_server_polarshield_esp32
+**
+
+A Polarshield v2.x is an add-on board for an Arduino MEGA that provides two stepper drivers, an SD card reader and 
+an LCD touchscreen. The firmware may also be configured at compile time to target RAMPS, though without SD reader and touchscreen.
 
 There is a precompiled binary hex file you can use if you don't want to compile from source.
 
