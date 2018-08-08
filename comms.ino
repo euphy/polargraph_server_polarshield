@@ -188,7 +188,7 @@ boolean comms_parseCommand(char *inS)
 
 void comms_extractParams(char* inS) 
 {
-  char in[strlen(inS)];
+  char in[strlen(inS)+1];
   strcpy(in, inS);
   char * param;
   
