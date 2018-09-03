@@ -4,8 +4,11 @@ polargraph_server_polarshield
 Polargraph Server for ATMEGA2560 based arduino boards, primarily targetting a Polarshield v2.x motor controller.
 This was the standard board for PolargraphSD machines made from 2014 to 2018.
 
+This doesn't seem to compile in Arduino IDE v1.8.6! Why? I don't know! It works fine in 1.8.5.
+It also doesn't work in the online web Arduino IDE.
+
 ** 
-Please note! From mid-2018, development has moved onto a ESP32-based platform. 
+Please note! From mid-2018, development of new features has moved onto a ESP32-based platform. 
 The codebase has changed to do this, and so v2 of this code is in a separate repo: 
 https://github.com/euphy/polargraph_server_polarshield_esp32
 **
